@@ -94,11 +94,9 @@ PROGRESS_BAR = """\n
 
 
 async def progress_bar(current, total, ud_type, message, start):
-
     now = time.time()
     diff = now - start
     if round(diff % 10.00) == 0 or current == total:
-        # if round(current / total * 100, 0) % 5 == 0:
         percentage = current * 100 / total
         speed = current / diff
         elapsed_time = round(diff) * 1000
@@ -109,23 +107,36 @@ async def progress_bar(current, total, ud_type, message, start):
         estimated_total_time = TimeFormatter(milliseconds=estimated_total_time)
 
         progress = "{0}{1}".format(
-            ''.join(["🟢" for i in range(math.floor(percentage / 10))]),
-            ''.join(["🔴" for i in range(10 - math.floor(percentage / 10))]))
+            ''.join(["●" for _ in range(math.floor(percentage / 10))]),
+            ''.join(["○" for _ in range(10 - math.floor(percentage / 10))])
+        )
             
-        tmp = progress + PROGRESS_BAR.format( 
-            round(percentage, 2),
+        tmp = PROGRESS_BAR.format( 
+            progress,
             humanbytes(current),
             humanbytes(total),
             humanbytes(speed),
-            # elapsed_time if elapsed_time != '' else "0 s",
             estimated_total_time if estimated_total_time != '' else "0 s"
         )
-        try:
-            await message.edit(
-                text="{}\n\n{}".format(ud_type, tmp),)             
-                
-        except:
-            pass
+
+        user_id = message.from_user.id
+        target_chat_id = user_settings.get(user_id)
+
+        if target_chat_id:
+            try:
+                await message._client.send_message(
+                    chat_id=target_chat_id,
+                    text="{}{}".format(ud_type, tmp)
+                )
+            except Exception as e:
+                print(f"Error sending progress update to chat {target_chat_id}: {e}")
+        else:
+            try:
+                await message.edit(
+                    text="{}{}".format(ud_type, tmp)
+                )
+            except Exception as e:
+                print(f"Error updating progress bar: {e}")
 
 def humanbytes(size):
     if not size:
